@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -42,8 +43,8 @@ class ReceiptSchema(BaseModel):
 
 class TransactionSchema(BaseModel):
     reference_id: str
-    sender_name: str
     amount: float
-    date: datetime
+    date: Optional[datetime] = None
+    receiver_bank_name : str
     model_config = ConfigDict(from_attributes=True)
 

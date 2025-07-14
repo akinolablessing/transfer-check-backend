@@ -13,5 +13,6 @@ class Transaction(Base):
     sender_bank_name = Column(String(100), nullable=False)
     date = Column(DateTime, nullable=False)
 
+
     agent_id = Column(Integer, ForeignKey("agents.id"))
     agent = relationship("Agent", back_populates="transactions")
