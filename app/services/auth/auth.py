@@ -1,21 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.db.data_base import SessionLocal
+
+from app.security.hash import hash_password, verify_password
+from app.security.jwt_handler import create_access_token
+from app.db.data_base import get_db
 from app.models.agent import Agent
-from app.schema.schemas import AgentCreate, AgentLogin, TokenResponse
-from app.auth.hash import hash_password, verify_password
-from app.auth.jwt_handler import create_access_token
+from app.schema.schemas import AgentCreate, AgentLogin
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-@router.post("/register")
 def register(agent: AgentCreate, db: Session = Depends(get_db)):
     existing_user = db.query(Agent).filter(Agent.email == agent.email).first()
     if existing_user:
@@ -31,13 +23,13 @@ def register(agent: AgentCreate, db: Session = Depends(get_db)):
     db.add(new_agent)
     db.commit()
     db.refresh(new_agent)
-    return {"message": "Agent registered successfully"}
+    token = create_access_token(new_agent)
+    return {"message": "Agent registered successfully" , "access_token": token}
 
-@router.post("/login", response_model=TokenResponse)
+
 def login(agent: AgentLogin, db: Session = Depends(get_db)):
     db_agent = db.query(Agent).filter(Agent.email == agent.email).first()
     if not db_agent or not verify_password(agent.password, db_agent.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    token = create_access_token({"sub": db_agent.email})
+    token = create_access_token(db_agent)
     return {"access_token": token, "token_type": "bearer"}
