@@ -1,6 +1,5 @@
 from datetime import datetime
-from typing import Dict, Any, List
-from xmlrpc.client import DateTime
+from typing import Dict, Any
 
 import cv2
 import numpy as np
@@ -9,7 +8,9 @@ import pytesseract
 import re
 
 from fastapi import HTTPException
+from sqlalchemy.orm import Session
 
+from app.models.agent import Agent
 from app.models.transaction import Transaction
 from app.schema.schemas import TransactionSchema
 
@@ -26,6 +27,10 @@ dummy_transactions = [
         reference_id="250713010100785037713236"
     )
 ]
+
+
+
+
 def is_background_dark(image, threshold=100):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     mean_brightness = np.mean(gray)
@@ -38,6 +43,8 @@ def normalize_background(contents: bytes):
     if is_background_dark(img):
         img = cv2.bitwise_not(img)
     return Image.fromarray(img)
+
+
 
 
 def extract_info(text: str) -> Dict[str, Any]:
@@ -73,9 +80,9 @@ def extract_info(text: str) -> Dict[str, Any]:
         info["time"] = time_match.group(0)
 
     banks_pattern = (
-        r'(GTBank|Guaranty Trust|Access|UBA|First Bank|Zenith|Sterling|OPay|Kuda|Moniepoint|Fidelity|'
-        r'Ecobank|Union Bank|Keystone|Stanbic|FCMB|Jaiz|Heritage|Wema|Globus|Suntrust|'
-        r'Parallex|Providus)'
+        r'\b(GTBank|Guaranty Trust(?: Bank)?|Access(?: Bank)?|UBA|United Bank for Africa|First(?: Bank)?|Zenith|Sterling|'
+        r'OPay|Kuda|Moniepoint|Fidelity|Ecobank|Union(?: Bank)?|Keystone|Stanbic(?: IBTC)?|FCMB|First City Monument Bank|'
+        r'Jaiz|Heritage|Wema|Globus|Suntrust|Parallex|Providus)\b'
     )
     recipient_section_match = re.search(
         r'(Recipient[\s\S]+?)(?=\n\s*\n|Sender|Narration|Transaction\s+No\.)',
@@ -101,8 +108,7 @@ def unwarp_receipt(file):
     return info
 
 
-
-def scan_image(image):
+def scan_image(image, user_id, db: Session):
     info = unwarp_receipt(image)
     date = info["date"]
     reference_id = info["transaction_id"]
@@ -112,11 +118,11 @@ def scan_image(image):
 
     if not reference_id or not amount or not receiver_bank_name:
         raise HTTPException(status_code=404, detail="All fields are required")
+
     try:
         amount = float(amount.replace(",", ""))
     except:
-        raise HTTPException(404,"❌ Invalid amount format.")
-
+        raise HTTPException(404, "❌ Invalid amount format.")
 
     def clean_date_suffix(date_str):
         return re.sub(r'(\d{1,2})(st|nd|rd|th)', r'\1', date_str)
@@ -133,20 +139,47 @@ def scan_image(image):
                     full_datetime = datetime.strptime(combined, "%b %d, %Y %I:%M:%S %p")
             else:
                 full_datetime = datetime.strptime(date, "%b %d, %Y")
-        except Exception as e:
-            raise HTTPException(404, "<UNK> Invalid date.")
+        except Exception:
+            raise HTTPException(404, "❌ Invalid date.")
 
-    transaction = TransactionSchema(
-        amount=amount,
-        receiver_bank_name=receiver_bank_name,
-        reference_id=reference_id,
-        date=full_datetime
-    )
+    for tran in dummy_transactions:
+        if tran.reference_id == reference_id and tran.amount == amount:
+            existing_txn = db.query(Transaction).filter_by(reference_id=reference_id).first()
+            if existing_txn:
+                return {"message": "Money available ✅", "already_saved": True}
+            else:
+                transaction = Transaction(
+                    amount=amount,
+                    receiver_bank_name=receiver_bank_name,
+                    reference_id=reference_id,
+                    date=full_datetime,
+                    agent_id=user_id,
+                )
+                db.add(transaction)
+                db.commit()
+                user = db.query(Agent).filter_by(id=user_id).first()
+                user.successful_transactions += 1
+                db.commit()
+                db.refresh(user)
+                return {"message": "Money available ✅", "saved": True}
+    user = db.query(Agent).filter_by(id=user_id).first()
+    user.unsuccessful_transactions += 1
+    db.commit()
+    db.refresh(user)
+    raise HTTPException(404, "No money available ❌")
 
 
-    for transactions in dummy_transactions:
-        if transactions.reference_id == transaction.reference_id and transactions.amount == transaction.amount:
-            return {"message":"Money available"}
-    raise HTTPException(404, "No money available")
+def get_successful_transactions(db: Session,user_id):
+    user = db.query(Agent).filter_by(id=user_id).first()
+    return user.successful_transactions
+
+
+def get_unsuccessful_transactions(db: Session,user_id):
+    user = db.query(Agent).filter_by(id=user_id).first()
+    return user.unsuccessful_transactions
+
+
+def get_transactions(db: Session, user_id):
+    user = db.query(Agent).filter_by(id=user_id).first()
 
 
