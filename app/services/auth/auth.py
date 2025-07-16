@@ -34,6 +34,9 @@ def register(agent: AgentCreate, db: Session = Depends(get_db)):
     existing_email = db.query(Agent).filter(Agent.email == agent.email.strip()).first()
     existing_phone = db.query(Agent).filter(Agent.phone == phone).first()
 
+    if not agent.password or not agent.password.strip():
+        raise HTTPException(status_code=400, detail="Password is required")
+
     if existing_email:
         raise HTTPException(status_code=400, detail="Email already registered")
     if existing_phone:
