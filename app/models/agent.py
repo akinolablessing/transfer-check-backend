@@ -11,4 +11,6 @@ class Agent(Base):
     phone = Column(String(50), unique=True, nullable=False)
     email = Column(String(100), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
+    successful_transactions = Column(Integer, default=0)
+    unsuccessful_transactions = Column(Integer, default=0)
     transactions = relationship("Transaction", back_populates="agent", cascade="all, delete", lazy="selectin")
