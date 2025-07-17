@@ -9,6 +9,7 @@ import os
 load_dotenv()
 
 data_base = os.getenv("DATABASE_URL")
+print(data_base)
 engine = create_engine(data_base)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
