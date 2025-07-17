@@ -31,6 +31,6 @@ def root():
 
 
 if __name__ == "__main__":
-    Base.metadata.drop_all(bind=engine)
+    # Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     uvicorn.run(app, host="127.0.0.1", port=8000)
