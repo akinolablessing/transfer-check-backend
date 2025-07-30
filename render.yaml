@@ -1,11 +1,15 @@
 services:
   - type: web
-    name: fastapi-receipt-ocr
+    name: transfer-check-backend
     env: python
-    region: oregon  # or choose your preferred region
+    region: oregon
     plan: free
-    buildCommand: pip install --no-cache-dir -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port 10000
+    buildCommand: |
+      pip install --no-cache-dir -r requirements.txt
+    startCommand: |
+      apt-get update && \
+      apt-get install -y tesseract-ocr && \
+      uvicorn app.main:app --host 0.0.0.0 --port 10000
     envVars:
       - key: PORT
         value: 10000
