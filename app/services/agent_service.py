@@ -166,7 +166,7 @@ def scan_image(image, user_id, db: Session):
     user.unsuccessful_transactions += 1
     db.commit()
     db.refresh(user)
-    raise HTTPException(404, "No money available ❌")
+    raise HTTPException(status_code=404, detail="No money available ❌")
 
 
 def get_successful_transactions(db: Session,user_id):
@@ -181,5 +181,6 @@ def get_unsuccessful_transactions(db: Session,user_id):
 
 def get_transactions(db: Session, user_id):
     user = db.query(Agent).filter_by(id=user_id).first()
+    return user.transactions
 
 
