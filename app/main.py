@@ -1,3 +1,5 @@
+import shutil
+
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,6 +36,9 @@ def root():
 @app.get("/api/health")
 def health_check():
     return {"status": "ok"}
+@app.get("/tesseract-check")
+def check_tesseract():
+    return {"tesseract_path": shutil.which("tesseract")}
 
 if __name__ == "__main__":
     # Base.metadata.drop_all(bind=engine)
