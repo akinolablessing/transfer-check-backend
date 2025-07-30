@@ -31,6 +31,9 @@ app.add_middleware(
 def root():
     return {"message": "Welcome to Transfer Check API"}
 
+@app.get("/api/health")
+def health_check():
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     # Base.metadata.drop_all(bind=engine)
