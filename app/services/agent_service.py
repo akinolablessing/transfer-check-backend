@@ -145,7 +145,7 @@ def scan_image(image, user_id, db: Session):
             raise HTTPException(404, "❌ Invalid date.")
 
     for tran in dummy_transactions:
-        if tran.reference_id == reference_id and tran.amount == amount:
+        if tran.reference_id == reference_id :
             existing_txn = db.query(Transaction).filter_by(reference_id=reference_id).first()
             if existing_txn:
                 return {"message": "Money available ✅", "already_saved": True}
