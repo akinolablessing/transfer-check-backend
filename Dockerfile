@@ -1,19 +1,21 @@
 FROM python:3.11-slim
 
-# Install system packages
-RUN apt-get update && apt-get install -y tesseract-ocr && apt-get clean
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y tesseract-ocr libgl1 && \
+    apt-get clean
 
-# Set work directory
+# Set working directory
 WORKDIR /app
 
-# Copy files
+# Copy project files
 COPY . /app
 
-# Install dependencies
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Expose port
 EXPOSE 10000
 
-# Start FastAPI
+# Run the app
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "10000"]
