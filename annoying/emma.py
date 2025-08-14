@@ -1,0 +1,1 @@
+print("you lack sense , hissss, have a nice day..")
