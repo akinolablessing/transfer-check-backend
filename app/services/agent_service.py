@@ -1,19 +1,15 @@
 from datetime import datetime
 from typing import Dict, Any
-
 import cv2
 import numpy as np
 from PIL import Image
 import pytesseract
 import re
-
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-
 from app.models.agent import Agent
 from app.models.transaction import Transaction
 from app.schema.schemas import TransactionSchema
-
 
 dummy_transactions = [
     TransactionSchema(
@@ -25,8 +21,14 @@ dummy_transactions = [
         amount=5000.00,
         receiver_bank_name="OPay",
         reference_id="250713010100785037713236"
+    ),
+    TransactionSchema(
+        amount=5000.00,
+        receiver_bank_name="Sterling",
+        reference_id="000001250729142704843740325448"
     )
 ]
+
 
 
 
@@ -73,7 +75,7 @@ def extract_info(text: str) -> Dict[str, Any]:
     if date_match:
         info["date"] = date_match.group(0)
 
-    # Time Pattern: "10:24:09", "07.42AM"
+
     time_pattern = r'\b(\d{1,2}:\d{2}(?::\d{2})?\s?(?:AM|PM)?)\b'
     time_match = re.search(time_pattern, text, re.IGNORECASE)
     if time_match:
@@ -143,7 +145,7 @@ def scan_image(image, user_id, db: Session):
             raise HTTPException(404, "❌ Invalid date.")
 
     for tran in dummy_transactions:
-        if tran.reference_id == reference_id and tran.amount == amount:
+        if tran.reference_id == reference_id :
             existing_txn = db.query(Transaction).filter_by(reference_id=reference_id).first()
             if existing_txn:
                 return {"message": "Money available ✅", "already_saved": True}
@@ -166,7 +168,7 @@ def scan_image(image, user_id, db: Session):
     user.unsuccessful_transactions += 1
     db.commit()
     db.refresh(user)
-    raise HTTPException(404, "No money available ❌")
+    raise HTTPException(status_code=404, detail="No money available ❌")
 
 
 def get_successful_transactions(db: Session,user_id):
@@ -181,5 +183,6 @@ def get_unsuccessful_transactions(db: Session,user_id):
 
 def get_transactions(db: Session, user_id):
     user = db.query(Agent).filter_by(id=user_id).first()
+    return user.transactions
 
 
